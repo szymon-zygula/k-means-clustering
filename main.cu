@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include "kmeans_clustering_cpu.h"
+#include "kmeans_clustering_gpu.h"
 
 static constexpr size_t PROG_ARG_PROGRAM_NAME = 0;
 static constexpr size_t PROG_ARG_INPUT_FILE = 1;
@@ -14,8 +15,8 @@ void usage(char* program_name) {
     exit(1);
 }
 
-std::vector<kmeans::Vec<DIMENSION>> load_data(char* input_file_path) {
-    std::vector<kmeans::Vec<DIMENSION>> objects;
+thrust::host_vector<kmeans::Vec<DIMENSION>> load_data(char* input_file_path) {
+    thrust::host_vector<kmeans::Vec<DIMENSION>> objects;
 
     std::ifstream input_file(input_file_path);
     bool reading = true;
@@ -36,9 +37,9 @@ std::vector<kmeans::Vec<DIMENSION>> load_data(char* input_file_path) {
 
 void print_results(
     std::ostream& out_stream,
-    std::vector<kmeans::Vec<DIMENSION>>& objects,
-    std::vector<kmeans::Vec<DIMENSION>>& centroids,
-    std::vector<size_t>& memberships
+    thrust::host_vector<kmeans::Vec<DIMENSION>>& objects,
+    thrust::host_vector<kmeans::Vec<DIMENSION>>& centroids,
+    thrust::host_vector<size_t>& memberships
 ) {
     for(size_t i = 0; i < centroids.size(); ++i) {
         out_stream << std::endl;
@@ -58,8 +59,8 @@ int main(int argc, char* argv[]) {
 
     size_t k = 6;
 
-    std::vector<kmeans::Vec<DIMENSION>> objects = load_data(argv[PROG_ARG_INPUT_FILE]);
-    auto clusters = kmeans_cpu::kmeans_clustering(objects, k);
+    thrust::host_vector<kmeans::Vec<DIMENSION>> objects = load_data(argv[PROG_ARG_INPUT_FILE]);
+    auto clusters = kmeans_gpu::kmeans_clustering(objects, k);
 
     print_results(std::cout, objects, clusters.first, clusters.second);
 

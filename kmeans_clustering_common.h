@@ -1,3 +1,6 @@
+#ifndef KMEANS_CLUSTERING_COMMON_H
+#define KMEANS_CLUSTERING_COMMON_H
+
 #include <cmath>
 #include <ostream>
 
@@ -41,3 +44,5 @@ namespace kmeans {
 
 
 }
+
+#endif

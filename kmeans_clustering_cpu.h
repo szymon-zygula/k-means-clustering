@@ -1,4 +1,6 @@
-#include <vector>
+#ifndef KMEANS_CLUSTERING_CPU_H
+#define KMEANS_CLUSTERING_CPU_H
+
 #include <cmath>
 #include <algorithm>
 #include <cstring>
@@ -7,13 +9,14 @@
 #include <iostream>
 #include <chrono>
 
+#include <thrust/host_vector.h>
+
 #include "kmeans_clustering_common.h"
 
 namespace kmeans_cpu {
     template<size_t dim>
     std::pair<kmeans::Vec<dim>, kmeans::Vec<dim>> calculate_bounding_box(
-        size_t k,
-        std::vector<kmeans::Vec<dim>>& objects
+        thrust::host_vector<kmeans::Vec<dim>>& objects
     ) {
         kmeans::Vec<dim> low_bounding_box;
         kmeans::Vec<dim> high_bounding_box;
@@ -33,14 +36,14 @@ namespace kmeans_cpu {
         return std::make_pair(low_bounding_box, high_bounding_box);
     }
 
-    // TODO: replace randomness with first k objects?
+    // TODO: Unify with GPU code, allow to be chosen before kmeans_clustering
     template<size_t dim>
-    std::vector<kmeans::Vec<dim>> initialize_centroids(
+    thrust::host_vector<kmeans::Vec<dim>> initialize_centroids(
         size_t k,
-        std::vector<kmeans::Vec<dim>>& objects
+        thrust::host_vector<kmeans::Vec<dim>>& objects
     ) {
-        auto bounding_box = calculate_bounding_box(k, objects);
-        std::vector<kmeans::Vec<dim>> centroids(k);
+        auto bounding_box = calculate_bounding_box(objects);
+        thrust::host_vector<kmeans::Vec<dim>> centroids(k);
         auto seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::mt19937_64 mersenne_twister(seed);
 
@@ -59,15 +62,15 @@ namespace kmeans_cpu {
     template<size_t dim>
     size_t find_closest_centroid(
         kmeans::Vec<dim>& object,
-        std::vector<kmeans::Vec<dim>>& clusters
+        thrust::host_vector<kmeans::Vec<dim>>& clusters
     ) {
         size_t closest_centroid;
         double min_dist = std::numeric_limits<double>::infinity();
-        for(size_t j = 0; j < clusters.size(); ++j) {
-            double dist = kmeans::Vec<dim>::square_distance(object, clusters[j]);
+        for(size_t i = 0; i < clusters.size(); ++i) {
+            double dist = kmeans::Vec<dim>::square_distance(object, clusters[i]);
             if(dist < min_dist) {
                 min_dist = dist;
-                closest_centroid = j;
+                closest_centroid = i;
             }
         }
 
@@ -76,10 +79,10 @@ namespace kmeans_cpu {
 
     template<size_t dim>
     size_t assign_to_closest_centroid(
-        std::vector<kmeans::Vec<dim>>& objects,
+        thrust::host_vector<kmeans::Vec<dim>>& objects,
         size_t object_idx,
-        std::vector<kmeans::Vec<dim>>& centroids,
-        std::vector<size_t>& memberships,
+        thrust::host_vector<kmeans::Vec<dim>>& centroids,
+        thrust::host_vector<size_t>& memberships,
         double& delta
     ) {
         size_t closest_centroid = find_closest_centroid(objects[object_idx], centroids);
@@ -93,11 +96,11 @@ namespace kmeans_cpu {
 
     template<size_t dim>
     void calculate_new_centroids(
-        std::vector<kmeans::Vec<dim>>& objects,
-        std::vector<kmeans::Vec<dim>>& centroids,
-        std::vector<size_t>& memberships,
-        std::vector<kmeans::Vec<dim>>& new_clusters,
-        std::vector<size_t>& new_cluster_sizes,
+        thrust::host_vector<kmeans::Vec<dim>>& objects,
+        thrust::host_vector<kmeans::Vec<dim>>& centroids,
+        thrust::host_vector<size_t>& memberships,
+        thrust::host_vector<kmeans::Vec<dim>>& new_centroids,
+        thrust::host_vector<size_t>& new_cluster_sizes,
         double& delta
     ) {
         for(size_t i = 0; i < objects.size(); ++i) {
@@ -105,8 +108,8 @@ namespace kmeans_cpu {
                 assign_to_closest_centroid(objects, i, centroids, memberships, delta);
 
             for(size_t j = 0; j < dim; ++j) {
-                new_clusters[closest_centroid].coords[j] += objects[i].coords[j];
-            }
+                new_centroids[closest_centroid].coords[j] += objects[i].coords[j];
+            }   
 
             new_cluster_sizes[closest_centroid] += 1;
         }
@@ -114,9 +117,9 @@ namespace kmeans_cpu {
 
     template<size_t dim>
     void update_centroids(
-        std::vector<kmeans::Vec<dim>>& centroids,
-        std::vector<kmeans::Vec<dim>>& new_centroids,
-        std::vector<size_t>& new_cluster_sizes
+        thrust::host_vector<kmeans::Vec<dim>>& centroids,
+        thrust::host_vector<kmeans::Vec<dim>>& new_centroids,
+        thrust::host_vector<size_t>& new_cluster_sizes
     ) {
         for(size_t i = 0; i < centroids.size(); ++i) {
             for(size_t j = 0; j < dim; ++j) {
@@ -130,19 +133,17 @@ namespace kmeans_cpu {
     }
 
     template<size_t dim>
-    std::pair<std::vector<kmeans::Vec<dim>>, std::vector<size_t>> kmeans_clustering(
-        std::vector<kmeans::Vec<dim>>& objects, int k
+    std::pair<thrust::host_vector<kmeans::Vec<dim>>, thrust::host_vector<size_t>> kmeans_clustering(
+        thrust::host_vector<kmeans::Vec<dim>>& objects, int k
     ) {
         double delta = std::numeric_limits<double>::infinity();
-        std::vector<kmeans::Vec<dim>> centroids = initialize_centroids(k, objects);
-        std::vector<kmeans::Vec<dim>> new_centroids(centroids.size());
-        std::vector<size_t> new_cluster_size(new_centroids.size());
-        std::vector<size_t> memberships(objects.size());
+        thrust::host_vector<kmeans::Vec<dim>> centroids = initialize_centroids(k, objects);
+        thrust::host_vector<kmeans::Vec<dim>> new_centroids(centroids.size());
+        thrust::host_vector<size_t> new_cluster_size(new_centroids.size());
+        thrust::host_vector<size_t> memberships(objects.size());
 
-        int it = 0;
         while(delta / objects.size() > kmeans::ACCURACY_THRESHOLD) {
             delta = 0;
-            std::cout << "iteration " << it++ << std::endl;
             calculate_new_centroids(
                 objects, centroids, memberships, new_centroids, new_cluster_size, delta
             );
@@ -152,3 +153,5 @@ namespace kmeans_cpu {
         return std::make_pair(centroids, memberships);
     }
 }
+
+#endif
