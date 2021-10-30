@@ -1,9 +1,10 @@
 CC=nvcc
 C_FLAGS=
-TARGET=main
+FILES=main.cu
+TARGET=kmeans_clustering
 
 ${TARGET}:
-	${CC} ${C_FLAGS} ${TARGET}.cu -o ${TARGET}
+	${CC} ${C_FLAGS} ${FILES} -o ${TARGET}
 
 clean:
 	-rm -rf ${TARGET}
