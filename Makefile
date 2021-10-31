@@ -1,6 +1,6 @@
 CC=nvcc
 C_FLAGS=--gpu-architecture sm_60
-FILES=main.cu
+FILES=main.cu timers.cu
 TARGET=kmeans_clustering
 
 ${TARGET}:

@@ -13,6 +13,7 @@
 #include "vec.h"
 #include "kmeans_device_data.h"
 #include "device_vec_array.h"
+#include "timers.h"
 
 #define DOUBLE_INFINITY (1.0 / 0.0)
 
@@ -133,9 +134,15 @@ namespace kmeans_gpu {
         DeviceData<dim> data(h_centroids, h_objects);
 
         while(delta / h_objects.size() > kmeans::ACCURACY_THRESHOLD) {
+            timers::gpu::distance_calculation.start();
             delta = calculate_nearest_centroids(data);
+            timers::gpu::distance_calculation.stop();
+
             cudaDeviceSynchronize();
+
+            timers::gpu::new_centroid_calculation.start();
             update_centroids(data);
+            timers::gpu::new_centroid_calculation.stop();
         }
 
         h_centroids = data.get_host_centroids();

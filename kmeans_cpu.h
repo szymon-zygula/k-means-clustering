@@ -10,6 +10,7 @@
 #include <thrust/host_vector.h>
 
 #include "vec.h"
+#include "timers.h"
 
 namespace kmeans_cpu {
     template<size_t dim>
@@ -97,10 +98,15 @@ namespace kmeans_cpu {
 
         while(delta / objects.size() > kmeans::ACCURACY_THRESHOLD) {
             delta = 0;
+            timers::cpu::distance_calculation.start();
             calculate_new_centroids(
                 objects, centroids, memberships, new_centroids, new_cluster_size, delta
             );
+            timers::cpu::distance_calculation.stop();
+
+            timers::cpu::new_centroid_calculation.start();
             update_centroids(centroids, new_centroids, new_cluster_size);
+            timers::cpu::new_centroid_calculation.stop();
         }
 
         return memberships;

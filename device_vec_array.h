@@ -2,6 +2,7 @@
 #define DEVICE_VEC_ARRAY_H
 
 #include "vec.h"
+#include "timers.h"
 
 namespace kmeans_gpu {
     template<size_t dim>
@@ -36,6 +37,7 @@ namespace kmeans_gpu {
         }
 
         thrust::host_vector<kmeans::Vec<dim>> to_host() {
+            timers::gpu::device_to_host_transfer.start();
             thrust::host_vector<double> objects(_size * dim);
             cudaMemcpy(
                 objects.data(), d_array,
@@ -43,6 +45,7 @@ namespace kmeans_gpu {
                 cudaMemcpyDeviceToHost
             );
 
+            timers::gpu::device_to_host_transfer.stop();
             return objects_soa_to_aos(objects);
         }
 
@@ -54,6 +57,7 @@ namespace kmeans_gpu {
         thrust::host_vector<double> objects_aos_to_soa(
             thrust::host_vector<kmeans::Vec<dim>>& objects
         ) {
+            timers::gpu::aos_to_soa_conversion.start();
             thrust::host_vector<double> rearranged_objects(_size * dim);
 
             for(size_t i = 0; i < dim; ++i) {
@@ -62,12 +66,14 @@ namespace kmeans_gpu {
                 }
             }
 
+            timers::gpu::aos_to_soa_conversion.stop();
             return rearranged_objects;
         }
 
         thrust::host_vector<kmeans::Vec<dim>> objects_soa_to_aos(
             thrust::host_vector<double> objects
         ) {
+            timers::gpu::soa_to_aos_conversion.start();
             thrust::host_vector<kmeans::Vec<dim>> rearranged_objects(_size);
 
             for(size_t i = 0; i < dim; ++i) {
@@ -76,16 +82,19 @@ namespace kmeans_gpu {
                 }
             }
 
+            timers::gpu::soa_to_aos_conversion.stop();
             return rearranged_objects;
         }
 
         void init_from_rearranged_objects(thrust::host_vector<double>& rearranged_objects) {
+            timers::gpu::host_to_device_transfer.start();
             cudaMalloc(&d_array, sizeof(double) * _size * dim);
             cudaMemcpy(
                 d_array, rearranged_objects.data(),
                 sizeof(double) * _size * dim,
                 cudaMemcpyHostToDevice
             );
+            timers::gpu::host_to_device_transfer.stop();
         }
     };
 }
