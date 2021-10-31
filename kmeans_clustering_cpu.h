@@ -5,60 +5,13 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
-#include <random>
 #include <iostream>
-#include <chrono>
 
 #include <thrust/host_vector.h>
 
 #include "kmeans_clustering_common.h"
 
 namespace kmeans_cpu {
-    template<size_t dim>
-    std::pair<kmeans::Vec<dim>, kmeans::Vec<dim>> calculate_bounding_box(
-        thrust::host_vector<kmeans::Vec<dim>>& objects
-    ) {
-        kmeans::Vec<dim> low_bounding_box;
-        kmeans::Vec<dim> high_bounding_box;
-
-        for(size_t i = 0; i < dim; ++i) {
-            double min = std::numeric_limits<double>::infinity();
-            double max = -std::numeric_limits<double>::infinity();
-            for(size_t j = 0; j < objects.size(); ++j) {
-                min = objects[j].coords[i] < min ? objects[j].coords[i] : min;
-                max = objects[j].coords[i] > max ? objects[j].coords[i] : max;
-            }
-
-            low_bounding_box.coords[i] = min;
-            high_bounding_box.coords[i] = max;
-        }
-
-        return std::make_pair(low_bounding_box, high_bounding_box);
-    }
-
-    // TODO: Unify with GPU code, allow to be chosen before kmeans_clustering
-    template<size_t dim>
-    thrust::host_vector<kmeans::Vec<dim>> initialize_centroids(
-        size_t k,
-        thrust::host_vector<kmeans::Vec<dim>>& objects
-    ) {
-        auto bounding_box = calculate_bounding_box(objects);
-        thrust::host_vector<kmeans::Vec<dim>> centroids(k);
-        auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-        std::mt19937_64 mersenne_twister(seed);
-
-        for(size_t i = 0; i < dim; ++i) {
-            double low = bounding_box.first.coords[i];
-            double high = bounding_box.second.coords[i];
-            std::uniform_real_distribution<double> centroid_distribution(low, high);
-            for(size_t j = 0; j < centroids.size(); ++j) {
-                centroids[j].coords[i] = centroid_distribution(mersenne_twister);
-            }
-        }
-
-        return centroids;
-    }
-
     template<size_t dim>
     size_t find_closest_centroid(
         kmeans::Vec<dim>& object,
@@ -133,11 +86,11 @@ namespace kmeans_cpu {
     }
 
     template<size_t dim>
-    std::pair<thrust::host_vector<kmeans::Vec<dim>>, thrust::host_vector<size_t>> kmeans_clustering(
-        thrust::host_vector<kmeans::Vec<dim>>& objects, int k
+    thrust::host_vector<size_t> kmeans_clustering(
+        thrust::host_vector<kmeans::Vec<dim>>& centroids,
+        thrust::host_vector<kmeans::Vec<dim>>& objects
     ) {
         double delta = std::numeric_limits<double>::infinity();
-        thrust::host_vector<kmeans::Vec<dim>> centroids = initialize_centroids(k, objects);
         thrust::host_vector<kmeans::Vec<dim>> new_centroids(centroids.size());
         thrust::host_vector<size_t> new_cluster_size(new_centroids.size());
         thrust::host_vector<size_t> memberships(objects.size());
@@ -150,7 +103,7 @@ namespace kmeans_cpu {
             update_centroids(centroids, new_centroids, new_cluster_size);
         }
 
-        return std::make_pair(centroids, memberships);
+        return memberships;
     }
 }
 

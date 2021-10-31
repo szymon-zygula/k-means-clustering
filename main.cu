@@ -59,10 +59,13 @@ int main(int argc, char* argv[]) {
 
     size_t k = 6;
 
-    thrust::host_vector<kmeans::Vec<DIMENSION>> objects = load_data(argv[PROG_ARG_INPUT_FILE]);
-    auto clusters = kmeans_gpu::kmeans_clustering(objects, k);
+    thrust::host_vector<kmeans::Vec<DIMENSION>> objects =
+        load_data(argv[PROG_ARG_INPUT_FILE]);
+    thrust::host_vector<kmeans::Vec<DIMENSION>> centroids =
+        kmeans::initialize_centroids(k, objects);
+    auto memberships = kmeans_gpu::kmeans_clustering(centroids, objects);
 
-    print_results(std::cout, objects, clusters.first, clusters.second);
+    print_results(std::cout, objects, centroids, memberships);
 
     return 0;
 }
