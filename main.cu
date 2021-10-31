@@ -1,8 +1,9 @@
 #include <iostream>
 #include <fstream>
 
-#include "kmeans_clustering_cpu.h"
-#include "kmeans_clustering_gpu.h"
+#include "kmeans_cpu.h"
+#include "kmeans_gpu.h"
+#include "centroid_init.h"
 
 static constexpr size_t PROG_ARG_PROGRAM_NAME = 0;
 static constexpr size_t PROG_ARG_INPUT_FILE = 1;
@@ -62,7 +63,7 @@ int main(int argc, char* argv[]) {
     thrust::host_vector<kmeans::Vec<DIMENSION>> objects =
         load_data(argv[PROG_ARG_INPUT_FILE]);
     thrust::host_vector<kmeans::Vec<DIMENSION>> centroids =
-        kmeans::initialize_centroids(k, objects);
+        kmeans::randomly_init_centroids(k, objects);
     auto memberships = kmeans_gpu::kmeans_clustering(centroids, objects);
 
     print_results(std::cout, objects, centroids, memberships);

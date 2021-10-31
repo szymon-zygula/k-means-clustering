@@ -9,7 +9,7 @@
 
 #include <thrust/host_vector.h>
 
-#include "kmeans_clustering_common.h"
+#include "vec.h"
 
 namespace kmeans_cpu {
     template<size_t dim>
