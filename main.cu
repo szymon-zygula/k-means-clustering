@@ -1,12 +1,12 @@
 #include <iostream>
 #include <fstream>
 
-#include "kmeans_cpu.h"
-#include "kmeans_gpu_method1.h"
-#include "kmeans_gpu_method2.h"
-#include "centroid_init.h"
-#include "timers.h"
-#include "config.h"
+#include "kmeans_cpu.cuh"
+#include "kmeans_gpu_method1.cuh"
+#include "kmeans_gpu_method2.cuh"
+#include "centroid_init.cuh"
+#include "timers.cuh"
+#include "config.cuh"
 
 static constexpr size_t PROG_ARG_PROGRAM_NAME = 0;
 static constexpr size_t PROG_ARG_INPUT_FILE = 1;

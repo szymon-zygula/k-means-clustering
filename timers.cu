@@ -1,4 +1,4 @@
-#include "timers.h"
+#include "timers.cuh"
 
 namespace timers {
     void HostTimer::start() {

@@ -1,8 +1,8 @@
 #ifndef DEVICE_VEC_ARRAY_H
 #define DEVICE_VEC_ARRAY_H
 
-#include "vec.h"
-#include "timers.h"
+#include "vec.cuh"
+#include "timers.cuh"
 
 namespace kmeans_gpu {
     template<size_t dim>

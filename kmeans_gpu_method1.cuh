@@ -1,7 +1,7 @@
 #ifndef KMEANS_GPU_METHOD1
 #define KMEANS_GPU_METHOD1
 
-#include "kmeans_gpu_common.h"
+#include "kmeans_gpu_common.cuh"
 
 namespace kmeans_gpu {
     namespace method1 {
@@ -88,7 +88,7 @@ namespace kmeans_gpu {
             );
         }
 
-        #include "kmeans_clustering_gpu.h"
+        #include "kmeans_clustering_gpu.cuh"
     }
 }
 

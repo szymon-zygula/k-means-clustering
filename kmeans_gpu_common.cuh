@@ -3,7 +3,7 @@
 
 #include <cstdlib>
 
-#include "kmeans_device_data.h"
+#include "kmeans_device_data.cuh"
 
 #define DOUBLE_INFINITY (1.0 / 0.0)
 

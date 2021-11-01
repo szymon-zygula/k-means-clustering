@@ -1,4 +1,4 @@
-#include "kmeans_gpu_common.h"
+#include "kmeans_gpu_common.cuh"
 
 namespace kmeans_gpu {
     double reduce_deltas(thrust::device_vector<double>& d_deltas) {

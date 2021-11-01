@@ -1,7 +1,7 @@
 #ifndef CENTROID_INIT_H
 #define CENTROID_INIT_H
 
-#include "vec.h"
+#include "vec.cuh"
 
 namespace kmeans {
     template<size_t dim>

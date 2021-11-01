@@ -4,7 +4,7 @@
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
 
-#include "kmeans_gpu_common.h"
+#include "kmeans_gpu_common.cuh"
 
 namespace kmeans_gpu {
     namespace method2 {
@@ -85,7 +85,7 @@ namespace kmeans_gpu {
             calculate_new_centroids<dim><<<block_count, THREADS_PER_BLOCK>>>(raw_data);
         }
 
-        #include "kmeans_clustering_gpu.h"
+        #include "kmeans_clustering_gpu.cuh"
     }
 }
 

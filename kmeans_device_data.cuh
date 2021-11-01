@@ -4,8 +4,8 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-#include "vec.h"
-#include "device_vec_array.h"
+#include "vec.cuh"
+#include "device_vec_array.cuh"
 
 namespace kmeans_gpu {
     namespace common {
