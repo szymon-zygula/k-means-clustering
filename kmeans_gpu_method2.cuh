@@ -3,6 +3,8 @@
 
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
+#include <thrust/iterator/discard_iterator.h>
+#include <thrust/execution_policy.h>
 
 #include "kmeans_gpu_common.cuh"
 
@@ -17,21 +19,19 @@ namespace kmeans_gpu {
             }
 
             size_t closest_centroid = find_closest_centroid<dim>(data, vec_idx);
-
             update_deltas<dim>(data, vec_idx, closest_centroid);
         }
 
         template<size_t dim>
         double calculate_nearest_centroids(DeviceData<dim>& data) {
-            size_t block_count = (data.d_objects.size() + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+            size_t block_count =
+                (data.d_objects.size() + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
             assign_to_closest_centroid<dim><<<
                 block_count, THREADS_PER_BLOCK
             >>>(
                 data.to_raw_pointers()
             );
-
-            cudaDeviceSynchronize();
 
             return reduce_deltas(data.d_deltas);
         }
@@ -52,31 +52,50 @@ namespace kmeans_gpu {
                     data.d_centroids, data.centroid_count, centroid_idx, i
                 );
 
-                *centroid_coord = data.d_reduced_objects[tid].coords[i] / data.d_reduced_counts[tid];
+                double reduced_coord = DeviceVecArray<dim>::get(
+                    data.d_reduced_objects, data.centroid_count, tid, i
+                );
+
+                *centroid_coord =
+                    reduced_coord / data.d_reduced_counts[tid];
             }
         }
 
         template<size_t dim>
         void update_centroids(DeviceData<dim>& data) {
             thrust::sort_by_key(
-                data.d_memberships.begin(), data.d_memberships.end(), data.d_aos_objects.begin()
+                data.d_memberships.begin(), data.d_memberships.end(),
+                data.d_object_permutation.begin()
             );
 
-            // TODO: Get rid of this
-            auto temp = static_cast<thrust::host_vector<kmeans::Vec<dim>>>(data.d_aos_objects);
-            data.d_objects = temp;
+            thrust::unique_copy(
+                data.d_memberships.begin(), data.d_memberships.end(),
+                data.d_reduced_memberships.begin()
+            );
+
+            for(size_t i = 0; i < dim; ++i) {
+                auto permuted_objects_dimension = thrust::make_permutation_iterator(
+                    data.d_objects.raw_data() + i * data.d_objects.size(),
+                    data.d_object_permutation.begin()
+                );
+
+                thrust::reduce_by_key(
+                    thrust::device,
+                    data.d_memberships.begin(), data.d_memberships.end(),
+                    permuted_objects_dimension,
+                    thrust::make_discard_iterator(),
+                    data.d_reduced_objects.raw_data() + i * data.d_reduced_objects.size()
+                );
+            }
 
             auto new_end = thrust::reduce_by_key(
-                data.d_memberships.begin(), data.d_memberships.end(), data.d_aos_objects.begin(),
-                data.d_reduced_memberships.begin(), data.d_reduced_objects.begin()
+                data.d_memberships.begin(), data.d_memberships.end(),
+                thrust::make_constant_iterator(1ul),
+                thrust::make_discard_iterator(),
+                data.d_reduced_counts.begin()
             );
 
-            thrust::reduce_by_key(
-                data.d_memberships.begin(), data.d_memberships.end(), data.d_ones.begin(),
-                data.d_reduced_memberships.begin(), data.d_reduced_counts.begin()
-            );
-
-            size_t reduced_count = new_end.first - data.d_reduced_memberships.begin();
+            size_t reduced_count = new_end.second - data.d_reduced_counts.begin();
             DeviceDataRaw<dim> raw_data = data.to_raw_pointers();
             raw_data.reduced_count = reduced_count;
 

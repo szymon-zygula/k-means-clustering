@@ -32,9 +32,13 @@ namespace kmeans_gpu {
     ) {
         double dist = 0.0;
         for(size_t j = 0; j < dim; ++j) {
-            double coord_diff =
-                DeviceVecArray<dim>::get(data.d_objects, data.object_count, vec_idx, j) -
-                DeviceVecArray<dim>::get(data.d_centroids, data.centroid_count, centroid, j);
+            double object_coord = DeviceVecArray<dim>::get(
+                data.d_objects, data.object_count, data.d_object_permutation[vec_idx], j
+            );
+            double centroid_coord = DeviceVecArray<dim>::get(
+                data.d_centroids, data.centroid_count, centroid, j
+            );
+            double coord_diff = object_coord - centroid_coord;
             dist += coord_diff * coord_diff;
         }
 

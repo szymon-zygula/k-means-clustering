@@ -17,6 +17,7 @@ namespace kmeans_gpu {
             double* d_centroids;
             size_t* d_memberships;
             double* d_deltas;
+            size_t* d_object_permutation;
         };
     }
 
@@ -35,6 +36,7 @@ namespace kmeans_gpu {
             thrust::device_vector<unsigned> d_new_cluster_sizes;
             thrust::device_vector<size_t> d_memberships;
             thrust::device_vector<double> d_deltas;
+            thrust::device_vector<size_t> d_object_permutation;
 
             DeviceData(
                 thrust::host_vector<kmeans::Vec<dim>>& h_centroids,
@@ -45,8 +47,14 @@ namespace kmeans_gpu {
                 d_new_centroids(h_centroids.size()),
                 d_new_cluster_sizes(h_objects.size()),
                 d_memberships(h_objects.size()),
-                d_deltas(h_objects.size())
-            {}
+                d_deltas(h_objects.size()),
+                d_object_permutation(h_objects.size())
+            {
+                thrust::copy_n(
+                    thrust::make_counting_iterator(0), h_objects.size(),
+                    d_object_permutation.begin()
+                );
+            }
 
             DeviceDataRaw<dim> to_raw_pointers() {
                 DeviceDataRaw<dim> raw_data;
@@ -58,6 +66,8 @@ namespace kmeans_gpu {
                 raw_data.d_new_cluster_sizes = thrust::raw_pointer_cast(d_new_cluster_sizes.data());
                 raw_data.d_memberships = thrust::raw_pointer_cast(d_memberships.data());
                 raw_data.d_deltas = thrust::raw_pointer_cast(d_deltas.data());
+                raw_data.d_object_permutation =
+                    thrust::raw_pointer_cast(d_object_permutation.data());
                 return raw_data;
             }
 
@@ -75,7 +85,7 @@ namespace kmeans_gpu {
         template<size_t dim>
         struct DeviceDataRaw : public common::DeviceDataRaw<dim> {
             size_t reduced_count;
-            kmeans::Vec<dim>* d_reduced_objects;
+            double* d_reduced_objects;
             size_t* d_reduced_memberships;
             size_t* d_reduced_counts;
         };
@@ -89,12 +99,10 @@ namespace kmeans_gpu {
             thrust::device_vector<size_t> d_memberships;
             thrust::device_vector<double> d_deltas;
 
-            thrust::device_vector<kmeans::Vec<dim>> d_aos_objects;
-            thrust::device_vector<kmeans::Vec<dim>> d_reduced_objects;
+            DeviceVecArray<dim> d_reduced_objects;
             thrust::device_vector<size_t> d_reduced_memberships;
             thrust::device_vector<size_t> d_reduced_counts;
-
-            thrust::device_vector<size_t> d_ones;
+            thrust::device_vector<size_t> d_object_permutation;
 
             DeviceData(
                 thrust::host_vector<kmeans::Vec<dim>>& h_centroids,
@@ -105,14 +113,18 @@ namespace kmeans_gpu {
                 d_memberships(h_objects.size()),
                 d_deltas(h_objects.size()),
 
-                d_aos_objects(h_objects),
                 d_reduced_objects(h_centroids.size()),
                 d_reduced_memberships(h_centroids.size()),
                 d_reduced_counts(h_centroids.size()),
-                d_ones(h_objects.size(), 1)
+                d_object_permutation(h_objects.size())
             {
                 this->h_objects = &h_objects;
                 this->h_centroids = &h_centroids;
+
+                thrust::copy_n(
+                    thrust::make_counting_iterator(0), h_objects.size(),
+                    d_object_permutation.begin()
+                );
             }
 
             DeviceDataRaw<dim> to_raw_pointers() {
@@ -124,15 +136,23 @@ namespace kmeans_gpu {
                 raw_data.d_memberships = thrust::raw_pointer_cast(d_memberships.data());
                 raw_data.d_deltas = thrust::raw_pointer_cast(d_deltas.data());
 
-                raw_data.d_reduced_objects = thrust::raw_pointer_cast(d_reduced_objects.data());
+                raw_data.d_reduced_objects = d_reduced_objects.raw_data();
                 raw_data.d_reduced_memberships =
                     thrust::raw_pointer_cast(d_reduced_memberships.data());
                 raw_data.d_reduced_counts = thrust::raw_pointer_cast(d_reduced_counts.data());
+                raw_data.d_object_permutation =
+                    thrust::raw_pointer_cast(d_object_permutation.data());
                 return raw_data;
             }
 
             thrust::host_vector<size_t> get_host_memberships() {
-                return static_cast<thrust::host_vector<size_t>>(d_memberships);
+                thrust::device_vector<size_t> d_depermuted_meberships(d_memberships.size());
+                thrust::scatter(
+                    d_memberships.begin(), d_memberships.end(),
+                    d_object_permutation.begin(),
+                    d_depermuted_meberships.begin()
+                );
+                return static_cast<thrust::host_vector<size_t>>(d_depermuted_meberships);
             }
 
             thrust::host_vector<kmeans::Vec<dim>> get_host_centroids() {
