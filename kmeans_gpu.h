@@ -94,7 +94,11 @@ namespace kmeans_gpu {
     template<size_t dim>
     double calculate_nearest_centroids(DeviceData<dim>& data) {
         size_t block_count = (data.d_objects.size() + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+        timers::gpu::distance_calculation.start();
         assign_to_closest_centroid<dim><<<block_count, THREADS_PER_BLOCK>>>(data.to_raw_pointers());
+            timers::gpu::distance_calculation.stop();
+
         return reduce_deltas(data.d_deltas);
     }
 
@@ -122,7 +126,10 @@ namespace kmeans_gpu {
     template<size_t dim>
     void update_centroids(DeviceData<dim>& data) {
         size_t block_count = (data.d_centroids.size() + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+        timers::gpu::new_centroid_calculation.start();
         update_centroids_ker<dim><<<block_count, THREADS_PER_BLOCK>>>(data.to_raw_pointers());
+        timers::gpu::new_centroid_calculation.stop();
     }
 
     template<size_t dim>
@@ -134,15 +141,9 @@ namespace kmeans_gpu {
         DeviceData<dim> data(h_centroids, h_objects);
 
         while(delta / h_objects.size() > kmeans::ACCURACY_THRESHOLD) {
-            timers::gpu::distance_calculation.start();
             delta = calculate_nearest_centroids(data);
-            timers::gpu::distance_calculation.stop();
 
-            cudaDeviceSynchronize();
-
-            timers::gpu::new_centroid_calculation.start();
             update_centroids(data);
-            timers::gpu::new_centroid_calculation.stop();
         }
 
         h_centroids = data.get_host_centroids();
