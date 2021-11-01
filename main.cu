@@ -5,18 +5,12 @@
 #include "kmeans_gpu.h"
 #include "centroid_init.h"
 #include "timers.h"
+#include "config.h"
 
 static constexpr size_t PROG_ARG_PROGRAM_NAME = 0;
 static constexpr size_t PROG_ARG_INPUT_FILE = 1;
 static constexpr size_t PROG_ARG_METRICS_FILE = 2;
 static constexpr size_t MIN_NUM_PROG_ARG = 2;
-
-static constexpr size_t DIMENSION = 3;
-
-static constexpr int VERSION = 1;
-
-static constexpr bool DISABLE_CPU = true;
-static constexpr bool SHOW_RESULTS = false;
 
 void usage(char* program_name) {
     std::cout << "USAGE: " << program_name << " input_file [metrics_file]" << std::endl;
