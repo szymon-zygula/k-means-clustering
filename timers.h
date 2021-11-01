@@ -76,6 +76,7 @@ namespace timers {
         extern HostTimer soa_to_aos_conversion;
     }
 
+    void reset_gpu_timers();
     void destroy_device_timers();
 }
 

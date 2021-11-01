@@ -18,9 +18,11 @@ namespace kmeans_gpu {
         }
 
         DeviceVecArray(thrust::host_vector<kmeans::Vec<dim>>& objects) {
-            _size = objects.size();
-            thrust::host_vector<double> rearranged_objects = objects_aos_to_soa(objects);
-            init_from_rearranged_objects(rearranged_objects);
+            init_from_host_vector(objects);
+        }
+
+        void operator=(thrust::host_vector<kmeans::Vec<dim>>& objects) {
+            init_from_host_vector(objects);
         }
 
         size_t size() {
@@ -54,6 +56,12 @@ namespace kmeans_gpu {
         }
 
         private:
+        void init_from_host_vector(thrust::host_vector<kmeans::Vec<dim>>& objects) {
+            _size = objects.size();
+            thrust::host_vector<double> rearranged_objects = objects_aos_to_soa(objects);
+            init_from_rearranged_objects(rearranged_objects);
+        }
+
         thrust::host_vector<double> objects_aos_to_soa(
             thrust::host_vector<kmeans::Vec<dim>>& objects
         ) {

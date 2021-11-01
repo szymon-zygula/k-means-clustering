@@ -135,6 +135,18 @@ namespace timers {
         HostTimer soa_to_aos_conversion;
     }
 
+    void reset_gpu_timers() {
+        gpu::aos_to_soa_conversion.reset();
+        gpu::host_to_device_transfer.reset();
+
+        gpu::algorithm.reset();
+        gpu::distance_calculation.reset();
+        gpu::new_centroid_calculation.reset();
+
+        gpu::device_to_host_transfer.reset();
+        gpu::soa_to_aos_conversion.reset();
+    }
+
     void destroy_device_timers() {
         gpu::host_to_device_transfer.~DeviceTimer();
         gpu::distance_calculation.~DeviceTimer();

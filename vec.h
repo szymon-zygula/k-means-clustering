@@ -15,12 +15,11 @@ namespace kmeans {
     struct Vec {
         double coords[dim];
 
+        __host__ __device__
         Vec() {
-            memset(coords, 0, sizeof(double) * dim);
-        }
-
-        Vec(double coords[dim]) {
-            memcpy(this->coords, coords, sizeof(double) * dim);
+            for(size_t i = 0; i < dim; ++i) {
+                coords[i] = 0.0;
+            }
         }
 
         static double square_distance(Vec<dim>& u, Vec<dim>& v) {
@@ -31,6 +30,24 @@ namespace kmeans {
             }
 
             return square_dist;
+        }
+
+        __host__ __device__
+        Vec operator+(const Vec& vec) const {
+            Vec<dim> sum(coords);
+            for(size_t i = 0; i < dim; ++i) {
+                sum.coords[i] += vec.coords[i];
+            }
+
+            return sum;
+        }
+
+        private:
+        __host__ __device__
+        Vec(const double coords[dim]) {
+            for(size_t i = 0; i < dim; ++i) {
+                this->coords[i] = coords[i];
+            }
         }
     };
 
