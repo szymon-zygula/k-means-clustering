@@ -55,18 +55,35 @@ namespace kmeans_gpu {
         size_t vec_idx,
         size_t centroid,
         double* shared_centroids,
-        double object_coords[dim]
+        double* object_coords
     ) {
-        double dist = 0.0;
-        for(size_t j = 0; j < dim; ++j) {
-            double centroid_coord = DeviceVecArray<dim>::get(
-                shared_centroids, data.centroid_count, centroid, j
-            );
-            double coord_diff = object_coords[j] - centroid_coord;
-            dist += coord_diff * coord_diff;
-        }
+        double centroid_coord = DeviceVecArray<dim>::get(
+            shared_centroids, data.centroid_count, centroid, dim - 1
+        );
 
-        return dist;
+        double coord_diff = object_coords[dim - 1] - centroid_coord;
+
+        double tail = calc_centroid_distance<dim - 1>(
+            *(common::DeviceDataRaw<dim - 1>*)&data,
+            vec_idx,
+            centroid,
+            shared_centroids,
+            object_coords
+        );
+
+        return coord_diff * coord_diff + tail;
+    }
+
+    template<>
+    __device__
+    inline double calc_centroid_distance<0>(
+        common::DeviceDataRaw<0>& data,
+        size_t vec_idx,
+        size_t centroid,
+        double* shared_centroids,
+        double* object_coords
+    ) {
+        return 0.0;
     }
 
     template<size_t dim>

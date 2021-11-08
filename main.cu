@@ -10,11 +10,13 @@
 
 static constexpr size_t PROG_ARG_PROGRAM_NAME = 0;
 static constexpr size_t PROG_ARG_INPUT_FILE = 1;
-static constexpr size_t PROG_ARG_METRICS_FILE = 2;
-static constexpr size_t MIN_NUM_PROG_ARG = 2;
+static constexpr size_t PROG_ARG_CENTROID_COUNT = 2;
+static constexpr size_t PROG_ARG_METRICS_FILE = 3;
+static constexpr size_t MIN_NUM_PROG_ARG = 3;
 
 void usage(char* program_name) {
-    std::cout << "USAGE: " << program_name << " input_file [metrics_file]" << std::endl;
+    std::cout << "USAGE: " << program_name <<
+        " input_file centroid_count [metrics_file]" << std::endl;
     exit(1);
 }
 
@@ -91,7 +93,10 @@ int main(int argc, char* argv[]) {
         usage(argv[PROG_ARG_PROGRAM_NAME]);
     }
 
-    size_t k = 100;
+    size_t centroid_count = atoi(argv[PROG_ARG_CENTROID_COUNT]);
+    if(centroid_count == 0) {
+        usage(argv[PROG_ARG_PROGRAM_NAME]);
+    }
 
     timers::data_loading.start();
     thrust::host_vector<kmeans::Vec<DIMENSION>> objects =
@@ -100,7 +105,7 @@ int main(int argc, char* argv[]) {
 
     timers::centroid_init.start();
     thrust::host_vector<kmeans::Vec<DIMENSION>> random_centroids =
-        kmeans::randomly_init_centroids(k, objects);
+        kmeans::randomly_init_centroids(centroid_count, objects);
     timers::centroid_init.stop();
 
     thrust::host_vector<kmeans::Vec<DIMENSION>> gpu1_objects = objects;
@@ -120,45 +125,42 @@ int main(int argc, char* argv[]) {
     }
 
     if(!DISABLE_CPU) {
-        thrust::host_vector<kmeans::Vec<DIMENSION>> cpu_objects = objects;
         thrust::host_vector<kmeans::Vec<DIMENSION>> cpu_centroids = random_centroids;
 
         std::cerr << "Starting CPU computation" << std::endl;
         timers::cpu::algorithm.start();
-        auto cpu_memberships = kmeans_cpu::kmeans_clustering(cpu_centroids, cpu_objects);
+        auto cpu_memberships = kmeans_cpu::kmeans_clustering(cpu_centroids, objects);
         timers::cpu::algorithm.stop();
 
-        print_results(std::cout, cpu_objects, cpu_centroids, cpu_memberships, "CPU");
-        print_cpu_metrics(*metrics_out_stream, objects.size(), k);
+        print_results(std::cout, objects, cpu_centroids, cpu_memberships, "CPU");
+        print_cpu_metrics(*metrics_out_stream, objects.size(), centroid_count);
     }
 
     {
-        thrust::host_vector<kmeans::Vec<DIMENSION>> gpu1_objects = objects;
         thrust::host_vector<kmeans::Vec<DIMENSION>> gpu1_centroids = random_centroids;
 
         std::cerr << "Starting gpu1 computation" << std::endl;
         timers::gpu::algorithm.start();
         auto gpu1_memberships =
-            kmeans_gpu::method1::kmeans_clustering(gpu1_centroids, gpu1_objects);
+            kmeans_gpu::method1::kmeans_clustering(gpu1_centroids, objects);
         timers::gpu::algorithm.stop();
 
-        print_results(std::cout, gpu1_objects, gpu1_centroids, gpu1_memberships, "gpu1");
-        print_gpu_metrics(*metrics_out_stream, objects.size(), k, 1);
+        print_results(std::cout, objects, gpu1_centroids, gpu1_memberships, "gpu1");
+        print_gpu_metrics(*metrics_out_stream, objects.size(), centroid_count, 1);
     }
 
     {
-        thrust::host_vector<kmeans::Vec<DIMENSION>> gpu2_objects = objects;
         thrust::host_vector<kmeans::Vec<DIMENSION>> gpu2_centroids = random_centroids;
         timers::reset_gpu_timers();
 
         std::cerr << "Starting gpu2 computation" << std::endl;
         timers::gpu::algorithm.start();
         auto gpu2_memberships =
-            kmeans_gpu::method2::kmeans_clustering(gpu2_centroids, gpu2_objects);
+            kmeans_gpu::method2::kmeans_clustering(gpu2_centroids, objects);
         timers::gpu::algorithm.stop();
 
-        print_results(std::cout, gpu2_objects, gpu2_centroids, gpu2_memberships, "gpu2");
-        print_gpu_metrics(*metrics_out_stream, objects.size(), k, 2);
+        print_results(std::cout, objects, gpu2_centroids, gpu2_memberships, "gpu2");
+        print_gpu_metrics(*metrics_out_stream, objects.size(), centroid_count, 2);
     }
 
     // Required, if destructors are allowed to fire automatically cudaErrorCudartUnloading

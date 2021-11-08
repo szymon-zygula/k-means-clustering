@@ -8,7 +8,7 @@ namespace kmeans_gpu {
         template<size_t dim>
         __device__
         void update_new_centroids(
-            DeviceDataRaw<dim> data,
+            DeviceDataRaw<dim>& data,
             size_t vec_idx,
             size_t closest_centroid
         ) {
