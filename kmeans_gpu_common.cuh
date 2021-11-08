@@ -4,12 +4,11 @@
 #include <cstdlib>
 
 #include "kmeans_device_data.cuh"
+#include "config.cuh"
 
 #define DOUBLE_INFINITY (1.0 / 0.0)
 
 namespace kmeans_gpu {
-    static constexpr size_t THREADS_PER_BLOCK = 1024;
-
     template<size_t dim>
     __device__
     inline void update_deltas(
@@ -35,6 +34,8 @@ namespace kmeans_gpu {
             double object_coord = DeviceVecArray<dim>::get(
                 data.d_objects, data.object_count, data.d_object_permutation[vec_idx], j
             );
+            // TODO: Move centroids to shared memory
+            // every one of them is accessed by every thread
             double centroid_coord = DeviceVecArray<dim>::get(
                 data.d_centroids, data.centroid_count, centroid, j
             );

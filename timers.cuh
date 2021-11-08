@@ -65,7 +65,7 @@ namespace timers {
     namespace gpu {
         void print_results(std::ostream& stream);
 
-        extern HostTimer aos_to_soa_conversion;
+        extern DeviceTimer aos_to_soa_conversion;
         extern DeviceTimer host_to_device_transfer;
 
         extern HostTimer algorithm;
@@ -73,7 +73,7 @@ namespace timers {
         extern DeviceTimer new_centroid_calculation;
 
         extern DeviceTimer device_to_host_transfer;
-        extern HostTimer soa_to_aos_conversion;
+        extern DeviceTimer soa_to_aos_conversion;
     }
 
     void reset_gpu_timers();

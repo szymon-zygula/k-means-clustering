@@ -3,9 +3,10 @@
 
 #include <cstdlib>
 
-static constexpr size_t DIMENSION = 2;
-static constexpr int VERSION = 1;
-static constexpr bool DISABLE_CPU = false;
-static constexpr bool SHOW_RESULTS = true;
+static constexpr size_t THREADS_PER_BLOCK = 1024;
+static constexpr size_t DIMENSION = 3;
+static constexpr int VERSION = 3;
+static constexpr bool DISABLE_CPU = true;
+static constexpr bool SHOW_RESULTS = false;
 
 #endif

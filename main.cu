@@ -49,6 +49,7 @@ void print_results(
         return;
     }
 
+    out_stream << std::endl;
     out_stream << who << " results:" << std::endl;
     for(size_t i = 0; i < centroids.size(); ++i) {
         out_stream << std::endl;
@@ -67,11 +68,10 @@ void print_common_metrics(std::ostream& out_stream, size_t object_count, size_t 
 }
 
 void print_cpu_metrics(std::ostream& out_stream, size_t object_count, size_t centroid_count) {
-    out_stream << std::endl;
-
     out_stream << "cpu,method1," << VERSION << ",";
     print_common_metrics(out_stream, object_count, centroid_count);
     timers::cpu::print_results(out_stream);
+    out_stream << std::endl;
 }
 
 void print_gpu_metrics(
@@ -80,11 +80,10 @@ void print_gpu_metrics(
     size_t centroid_count,
     size_t method
 ) {
-    out_stream << std::endl;
-
     out_stream << "gpu,method" << method << "," << VERSION << ",";
     print_common_metrics(out_stream, object_count, centroid_count);
     timers::gpu::print_results(out_stream);
+    out_stream << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -92,7 +91,7 @@ int main(int argc, char* argv[]) {
         usage(argv[PROG_ARG_PROGRAM_NAME]);
     }
 
-    size_t k = 6;
+    size_t k = 100;
 
     timers::data_loading.start();
     thrust::host_vector<kmeans::Vec<DIMENSION>> objects =
@@ -124,31 +123,27 @@ int main(int argc, char* argv[]) {
         thrust::host_vector<kmeans::Vec<DIMENSION>> cpu_objects = objects;
         thrust::host_vector<kmeans::Vec<DIMENSION>> cpu_centroids = random_centroids;
 
-        std::cout << "Starting CPU computation" << std::endl;
+        std::cerr << "Starting CPU computation" << std::endl;
         timers::cpu::algorithm.start();
         auto cpu_memberships = kmeans_cpu::kmeans_clustering(cpu_centroids, cpu_objects);
         timers::cpu::algorithm.stop();
 
         print_results(std::cout, cpu_objects, cpu_centroids, cpu_memberships, "CPU");
-        std::cout << std::endl;
         print_cpu_metrics(*metrics_out_stream, objects.size(), k);
-        std::cout << std::endl;
     }
 
     {
         thrust::host_vector<kmeans::Vec<DIMENSION>> gpu1_objects = objects;
         thrust::host_vector<kmeans::Vec<DIMENSION>> gpu1_centroids = random_centroids;
 
-        std::cout << "Starting gpu1 computation" << std::endl;
+        std::cerr << "Starting gpu1 computation" << std::endl;
         timers::gpu::algorithm.start();
         auto gpu1_memberships =
             kmeans_gpu::method1::kmeans_clustering(gpu1_centroids, gpu1_objects);
         timers::gpu::algorithm.stop();
 
         print_results(std::cout, gpu1_objects, gpu1_centroids, gpu1_memberships, "gpu1");
-        std::cout << std::endl;
         print_gpu_metrics(*metrics_out_stream, objects.size(), k, 1);
-        std::cout << std::endl;
     }
 
     {
@@ -156,16 +151,14 @@ int main(int argc, char* argv[]) {
         thrust::host_vector<kmeans::Vec<DIMENSION>> gpu2_centroids = random_centroids;
         timers::reset_gpu_timers();
 
-        std::cout << "Starting gpu2 computation" << std::endl;
+        std::cerr << "Starting gpu2 computation" << std::endl;
         timers::gpu::algorithm.start();
         auto gpu2_memberships =
             kmeans_gpu::method2::kmeans_clustering(gpu2_centroids, gpu2_objects);
         timers::gpu::algorithm.stop();
 
         print_results(std::cout, gpu2_objects, gpu2_centroids, gpu2_memberships, "gpu2");
-        std::cout << std::endl;
         print_gpu_metrics(*metrics_out_stream, objects.size(), k, 2);
-        std::cout << std::endl;
     }
 
     // Required, if destructors are allowed to fire automatically cudaErrorCudartUnloading
