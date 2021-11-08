@@ -45,7 +45,7 @@ namespace kmeans_gpu {
                 d_centroids(h_centroids),
                 d_objects(h_objects),
                 d_new_centroids(h_centroids.size()),
-                d_new_cluster_sizes(h_objects.size()),
+                d_new_cluster_sizes(h_centroids.size()),
                 d_memberships(h_objects.size()),
                 d_deltas(h_objects.size()),
                 d_object_permutation(h_objects.size())

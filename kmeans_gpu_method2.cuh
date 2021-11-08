@@ -14,11 +14,16 @@ namespace kmeans_gpu {
         __global__
         void assign_to_closest_centroid(DeviceDataRaw<dim> data) {
             size_t vec_idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+            extern __shared__ double shared_centroids[];
+            copy_centroids_to_shared(data, shared_centroids);
+
             if(vec_idx >= data.object_count) {
                 return;
             }
 
-            size_t closest_centroid = find_closest_centroid<dim>(data, vec_idx);
+            size_t closest_centroid = find_closest_centroid<dim>(data, vec_idx, shared_centroids);
+
             update_deltas<dim>(data, vec_idx, closest_centroid);
         }
 
@@ -28,7 +33,7 @@ namespace kmeans_gpu {
                 (data.d_objects.size() + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
             assign_to_closest_centroid<dim><<<
-                block_count, THREADS_PER_BLOCK
+                block_count, THREADS_PER_BLOCK, sizeof(double) * dim * data.d_centroids.size()
             >>>(
                 data.to_raw_pointers()
             );

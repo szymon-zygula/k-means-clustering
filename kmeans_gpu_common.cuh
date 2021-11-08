@@ -11,8 +11,34 @@
 namespace kmeans_gpu {
     template<size_t dim>
     __device__
+    void copy_centroids_to_shared(
+        common::DeviceDataRaw<dim>& data,
+        double* shared_centroids
+    ) {
+        size_t iterations =
+            (data.centroid_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+
+        for(size_t i = 0; i < dim; ++i) {
+            size_t dim_offset = i * data.centroid_count;
+            for(size_t j = 0; j < iterations; ++j) {
+                size_t centr_idx = THREADS_PER_BLOCK * j + threadIdx.x;
+                if(centr_idx >= data.centroid_count) {
+                    break;
+                }
+
+                size_t idx = centr_idx + dim_offset;
+                shared_centroids[idx] = data.d_centroids[idx];
+            }
+        }
+
+        __syncwarp();
+        __syncthreads();
+    }
+
+    template<size_t dim>
+    __device__
     inline void update_deltas(
-        common::DeviceDataRaw<dim> data,
+        common::DeviceDataRaw<dim>& data,
         size_t vec_idx,
         size_t closest_centroid
     ) {
@@ -25,21 +51,18 @@ namespace kmeans_gpu {
     template<size_t dim>
     __device__
     double calc_centroid_distance(
-        common::DeviceDataRaw<dim> data,
+        common::DeviceDataRaw<dim>& data,
         size_t vec_idx,
-        size_t centroid
+        size_t centroid,
+        double* shared_centroids,
+        double object_coords[dim]
     ) {
         double dist = 0.0;
         for(size_t j = 0; j < dim; ++j) {
-            double object_coord = DeviceVecArray<dim>::get(
-                data.d_objects, data.object_count, data.d_object_permutation[vec_idx], j
-            );
-            // TODO: Move centroids to shared memory
-            // every one of them is accessed by every thread
             double centroid_coord = DeviceVecArray<dim>::get(
-                data.d_centroids, data.centroid_count, centroid, j
+                shared_centroids, data.centroid_count, centroid, j
             );
-            double coord_diff = object_coord - centroid_coord;
+            double coord_diff = object_coords[j] - centroid_coord;
             dist += coord_diff * coord_diff;
         }
 
@@ -49,13 +72,23 @@ namespace kmeans_gpu {
     template<size_t dim>
     __device__
     size_t find_closest_centroid(
-        common::DeviceDataRaw<dim> data,
-        size_t vec_idx
+        common::DeviceDataRaw<dim>& data,
+        size_t vec_idx,
+        double* shared_centroids
     ) {
         size_t closest_centroid;
         double min_dist = DOUBLE_INFINITY;
+
+        double object_coords[dim];
+        for(size_t i = 0; i < dim; ++i) {
+            object_coords[i] = DeviceVecArray<dim>::get(
+                data.d_objects, data.object_count, data.d_object_permutation[vec_idx], i
+            );
+        }
+
         for(size_t i = 0; i < data.centroid_count; ++i) {
-            double dist = calc_centroid_distance<dim>(data, vec_idx, i);
+            double dist =
+                calc_centroid_distance<dim>(data, vec_idx, i, shared_centroids, object_coords);
             if(dist < min_dist) {
                 min_dist = dist;
                 closest_centroid = i;
