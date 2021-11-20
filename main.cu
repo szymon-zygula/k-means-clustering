@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
     std::ofstream metrics_out_file;
     std::ostream* metrics_out_stream;
-    if(argc == 3) {
+    if(argc == 4) {
         metrics_out_file.open(argv[PROG_ARG_METRICS_FILE], std::ios_base::app);
         metrics_out_stream = &metrics_out_file;
     }
